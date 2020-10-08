@@ -2,10 +2,13 @@ library(patchwork)
 library(tidyverse)
 
 # Fetch data (subtract 1 from date if #s for day aren't released yet)
-dt <- Sys.Date() - 1
+dt <- Sys.Date()
 dateFormat = "%m/%d/%y"
 curDate <- gsub("^0", "", gsub("/0", "/", format(dt, dateFormat)))
-tsCases <- read_csv(file="https://github.com/CSSEGISandData/COVID-19/raw/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Confirmed.csv")
+tsCases <- read_csv(file="https://github.com/CSSEGISandData/COVID-19/raw/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv")
+
+seq(dt-7, by = "day", length.out = 7) %>%
+  mapply()
 
 # Cleanup col names, pivot to longer, and sort
 dateCols <- grepl(pattern = "\\d", x = colnames(tsCases))
@@ -80,12 +83,7 @@ statesTimeseriesPlot <- tsCases %>%
           axis.text.x=element_blank(),
           axis.ticks.x=element_blank())
 
-# layout graphs
-(topCountriesPlot | topStatesPlot) /
-  countriesTimeseriesPlot /
-  statesTimeseriesPlot
-
-# Growth rate
+# Data for growth rate
 growth <- tsCases %>%
   filter(Country.Region %in% c("US", "Italy")) %>%
   group_by(Country.Region, Date) %>%
@@ -94,7 +92,15 @@ growth <- tsCases %>%
   arrange(Country.Region, as.Date(Date, format = dateFormat)) %>%
   mutate(Growth = Count/lag(Count) - 1)
 
-growth %>%
+growthPlot <- growth %>%
   ggplot(aes(x = reorder(Date, Count), y = Growth, group = Country.Region, color = Country.Region)) +
   geom_line() +
-  stat_smooth(method="lm")
+  stat_smooth(method="lm") +
+  theme(legend.position="none",
+      axis.title.x=element_blank(),
+      axis.text.x=element_blank(),
+      axis.ticks.x=element_blank())
+
+# layout graphs
+(topCountriesPlot | growthPlot) /
+  countriesTimeseriesPlot
